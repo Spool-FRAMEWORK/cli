@@ -30,7 +30,7 @@ public final class PathPrograms implements InstalledPrograms {
         return binaryOf(name).map(binary -> new ProcessProgram(binary, terminal));
     }
 
-    Optional<Path> binaryOf(String name) {
+    public Optional<Path> binaryOf(String name) {
         return variable(name.toUpperCase(Locale.ROOT) + BINARY_SUFFIX).map(Path::of).filter(Files::isRegularFile)
                 .or(() -> onThePath(name));
     }
