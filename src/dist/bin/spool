@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+spool_home=$(cd "$(dirname "$0")/.." && pwd)
+if [ -x "$spool_home/jre/bin/java" ]; then
+    java="$spool_home/jre/bin/java"
+elif [ -n "$JAVA_HOME" ]; then
+    java="$JAVA_HOME/bin/java"
+else
+    java=java
+fi
+lib="$spool_home/lib"
+if command -v cygpath >/dev/null 2>&1; then
+    lib=$(cygpath -w "$lib")
+fi
+exec "$java" -cp "$lib/*" software.spool.cli.Spool "$@"
