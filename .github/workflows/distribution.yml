@@ -1,0 +1,62 @@
+name: Distribution
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag whose release gets the distribution (ex: v1.2.3)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  distribution:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      - name: Package spool.zip
+        run: mvn -B -q package -DskipTests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Write its SHA-256
+        working-directory: target
+        run: sha256sum spool.zip > spool.zip.sha256
+
+      - name: Attach the distribution to the release
+        run: |
+          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "$TAG" --generate-notes
+          gh release upload "$TAG" target/spool.zip target/spool.zip.sha256 install/install.sh install/install.ps1 --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Redeploy the web, which serves the install scripts of the latest release
+        env:
+          WEB_DISPATCH_TOKEN: ${{ secrets.WEB_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$WEB_DISPATCH_TOKEN" ]; then
+            echo "::warning::WEB_DISPATCH_TOKEN is not set: the web keeps the install scripts of its last deploy"
+            exit 0
+          fi
+          curl -fsS -X POST https://api.github.com/repos/Spool-FRAMEWORK/web/dispatches \
+            -H "Authorization: Bearer $WEB_DISPATCH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d '{"event_type":"cli-released"}'
