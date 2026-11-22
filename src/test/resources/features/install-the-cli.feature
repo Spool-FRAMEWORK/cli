@@ -15,6 +15,7 @@ Feature: The spool command installs with one line
     Examples:
       | script      |
       | install.sh  |
+      | install.ps1 |
 
   @DEV-119
   Scenario: install.sh puts spool on the PATH of the user
@@ -34,6 +35,7 @@ Feature: The spool command installs with one line
     Examples:
       | script      |
       | install.sh  |
+      | install.ps1 |
 
   @DEV-119
   Scenario Outline: A zip that does not match its SHA-256 installs nothing
@@ -45,6 +47,7 @@ Feature: The spool command installs with one line
     Examples:
       | script      |
       | install.sh  |
+      | install.ps1 |
 
   @DEV-119
   Scenario Outline: Without Java 21, the script says so and offers a JRE
@@ -59,3 +62,4 @@ Feature: The spool command installs with one line
     Examples:
       | script      |
       | install.sh  |
+      | install.ps1 |
