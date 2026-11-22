@@ -1,1 +1,3 @@
 software.spool.cli.command.ValidateCommand$Factory
+software.spool.cli.command.TerraformCommand$Factory
+software.spool.cli.command.ProvisionCommand$Factory
