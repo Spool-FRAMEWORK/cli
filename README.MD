@@ -59,9 +59,18 @@ Without the secret the release still publishes everything, and the web serves th
 | `spool validate DESCRIPTOR` | Loads the descriptor and builds every module without starting it. Exit code 0 when it is valid, 1 with the file and the key when it is not. |
 | `spool terraform DESCRIPTOR --target TARGET [--out FOLDER]` | Writes the Terraform of its infrastructure for `local` or `aws` into `infrastructure`, or the folder given. Nothing is applied. |
 | `spool provision DESCRIPTOR --target TARGET [--out FOLDER] [--yes]` | Writes the Terraform into `.spool/terraform` and, after a yes, runs `terraform init` and `terraform apply`. `--yes` is the yes. |
+| `spool deploy DESCRIPTOR [--name NAME] [--api URL]` | Deploys the descriptor, as it is in its file, in the cluster of the [Spool API](https://github.com/Spool-FRAMEWORK/api), under the name of the file without `.spool.yaml` or the one given. Says the node it went to, or that it waits for one. |
+| `spool deployments [--api URL]` | Lists the deployments with their version, node and state, and the error of one that failed. |
+| `spool withdraw NAME [--api URL]` | Withdraws a deployment, so its node stops it. |
 
-Every command takes `--profile` (by default the one in `SPOOL_PROFILE`) and `--classpath`. Exit code 2 is a command
-used wrongly, such as an unknown `--target`.
+The commands that read a descriptor take `--profile` (by default the one in `SPOOL_PROFILE`) and `--classpath`. Exit
+code 2 is a command used wrongly, such as an unknown `--target`.
+
+The commands of the cluster talk to the API in `--api`, or in `SPOOL_API`. They prove who they are with the
+environment, never with an argument: the token in `SPOOL_API_TOKEN` goes as a bearer token, for an `OIDC` provider of
+the API; otherwise the secret in `SPOOL_API_SECRET` signs each request with the headers `X-Spool-Signature` and
+`X-Spool-Timestamp`, for an `HMAC_SIGNATURE` one. Without either, nothing is sent. An error of the API ends with exit
+code 1 and its message. A descriptor with `include:` is refused by the API: it takes a single file.
 
 ## The classes of the project
 
