@@ -25,6 +25,7 @@ import java.util.Optional;
 public class CliUnderTest {
     private final Path folder;
     private final Map<String, String> environment = new HashMap<>();
+    private final Map<String, String> placeholders = new HashMap<>();
     private final List<Run> terraformRuns = new ArrayList<>();
     private boolean terraformInstalled = true;
     private String output = "";
@@ -45,6 +46,15 @@ public class CliUnderTest {
         environment.put(name, value);
     }
 
+    public void removeEnvironment(String name) {
+        environment.remove(name);
+    }
+
+    /** A word of the command line, such as {@code {api}}, that stands for a value only known while the scenario runs. */
+    public void placeholder(String word, String value) {
+        placeholders.put(word, value);
+    }
+
     public void terraformInstalled(boolean installed) {
         terraformInstalled = installed;
     }
@@ -54,7 +64,7 @@ public class CliUnderTest {
         StringWriter err = new StringWriter();
         Terminal terminal = new Terminal(new BufferedReader(new StringReader(answers)), new PrintWriter(out, true),
                 new PrintWriter(err, true));
-        exitCode = SpoolCli.run(arguments(commandLine), new CommandContext(folder, environment::get, terminal, programs(terminal)));
+        exitCode = SpoolCli.run(arguments(withPlaceholders(commandLine)), new CommandContext(folder, environment::get, terminal, programs(terminal)));
         output = out.toString();
         error = err.toString();
     }
@@ -85,6 +95,14 @@ public class CliUnderTest {
             terraformRuns.add(new Run(runFolder, arguments));
             return 0;
         }) : Optional.empty();
+    }
+
+    private String withPlaceholders(String commandLine) {
+        String replaced = commandLine;
+        for (Map.Entry<String, String> placeholder : placeholders.entrySet()) {
+            replaced = replaced.replace(placeholder.getKey(), placeholder.getValue());
+        }
+        return replaced;
     }
 
     private static String[] arguments(String commandLine) {

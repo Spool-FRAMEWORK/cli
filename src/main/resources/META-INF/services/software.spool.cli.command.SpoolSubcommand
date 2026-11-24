@@ -1,3 +1,6 @@
 software.spool.cli.command.ValidateCommand$Factory
 software.spool.cli.command.TerraformCommand$Factory
 software.spool.cli.command.ProvisionCommand$Factory
+software.spool.cli.command.DeployCommand$Factory
+software.spool.cli.command.DeploymentsCommand$Factory
+software.spool.cli.command.WithdrawCommand$Factory
