@@ -31,7 +31,9 @@ public class CliSteps {
 
     @Given("the descriptor {string}:")
     public void theDescriptor(String name, String content) throws IOException {
-        Files.writeString(cli.folder().resolve(name), content);
+        Path file = cli.folder().resolve(name);
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, content);
     }
 
     @Given("the descriptor {string} uses the aggregator {string} of the project")

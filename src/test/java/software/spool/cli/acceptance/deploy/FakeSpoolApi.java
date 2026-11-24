@@ -1,5 +1,6 @@
 package software.spool.cli.acceptance.deploy;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -8,7 +9,7 @@ import software.spool.core.port.authentication.Authentication;
 import software.spool.core.port.http.HttpMethod;
 import software.spool.core.port.http.HttpRequest;
 import software.spool.dsl.DescriptorLoader;
-import software.spool.dsl.source.TextDescriptorSource;
+import software.spool.dsl.source.InMemoryDescriptorSource;
 import software.spool.infrastructure.adapter.authentication.hmac.HmacSignatureRequestAuthenticator;
 
 import java.io.IOException;
@@ -90,17 +91,19 @@ final class FakeSpoolApi {
         String name = path.substring(DEPLOYMENTS.length() + 1);
         if (request.method() == HttpMethod.DELETE)
             return deployments.remove(name) != null ? new Answer(204, "") : error(404, name + " is not deployed");
-        Optional<String> problem = problemOf(body);
+        Optional<String> problem = problemOf(JSON.readTree(body));
         if (problem.isPresent()) return error(400, problem.get());
         boolean isNew = !deployments.containsKey(name);
         deployments.put(name, deployment(name, liveNode, liveNode.isPresent() ? "STARTING" : "WAITING"));
         return new Answer(isNew ? 201 : 200, JSON.writeValueAsString(deployments.get(name)));
     }
 
-    private static Optional<String> problemOf(String descriptor) {
+    private static Optional<String> problemOf(JsonNode pipeline) {
+        Map<String, String> files = new HashMap<>();
+        pipeline.get("files").fields().forEachRemaining(file -> files.put(file.getKey(), file.getValue().asText()));
         try {
-            new DescriptorLoader(new TextDescriptorSource(descriptor), name -> "${env:" + name + "}")
-                    .load(TextDescriptorSource.LOCATION, Optional.empty(), loaded -> loaded);
+            new DescriptorLoader(new InMemoryDescriptorSource(files), name -> "${env:" + name + "}")
+                    .load(pipeline.get("main").asText(), Optional.empty(), loaded -> loaded);
             return Optional.empty();
         } catch (IOException invalid) {
             return Optional.of(invalid.getMessage());

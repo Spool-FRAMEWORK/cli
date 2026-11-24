@@ -6,13 +6,13 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import software.spool.cli.CommandContext;
 import software.spool.cli.api.DeploymentView;
+import software.spool.cli.api.PipelineFolder;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 
-@Command(name = "deploy", description = "Deploys a descriptor in the cluster of the Spool API, as it is in its file.")
+@Command(name = "deploy", description = "Deploys a descriptor and every file it includes in the cluster of the Spool API.")
 public final class DeployCommand implements Callable<Integer> {
     private static final String DESCRIPTOR_SUFFIX = ".spool.yaml";
     private static final String YAML_SUFFIX = ".yaml";
@@ -35,8 +35,8 @@ public final class DeployCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        String text = Files.readString(context.resolve(descriptor));
-        DeploymentView deployed = api.client(context).deploy(name.orElseGet(this::nameOfTheFile), text);
+        PipelineFolder.PipelineFiles pipeline = PipelineFolder.of(context.resolve(descriptor));
+        DeploymentView deployed = api.client(context).deploy(name.orElseGet(this::nameOfTheFile), pipeline);
         context.terminal().say(deployed.waits()
                 ? deployed.name() + " is deployed and waits for a live node"
                 : deployed.name() + " is deployed on " + deployed.node().orElse("?") + ", in its version " + deployed.version());

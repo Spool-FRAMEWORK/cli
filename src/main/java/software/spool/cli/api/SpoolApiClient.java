@@ -2,6 +2,7 @@ package software.spool.cli.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import software.spool.core.adapter.jackson.PayloadDeserializerFactory;
+import software.spool.core.adapter.jackson.RecordSerializerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -29,9 +30,10 @@ public final class SpoolApiClient {
         this.credentials = credentials;
     }
 
-    public DeploymentView deploy(String name, String descriptor) {
-        String body = send("PUT", DEPLOYMENTS + "/" + name, descriptor.getBytes(StandardCharsets.UTF_8), "application/yaml");
-        return viewOf(read(body, DeploymentPayload.class));
+    /** Deploys a pipeline as its main file and every file it includes (ADR-036). */
+    public DeploymentView deploy(String name, PipelineFolder.PipelineFiles pipeline) {
+        byte[] body = RecordSerializerFactory.<PipelineFolder.PipelineFiles>record().serialize(pipeline);
+        return viewOf(read(send("PUT", DEPLOYMENTS + "/" + name, body, "application/json"), DeploymentPayload.class));
     }
 
     public List<DeploymentView> deployments() {

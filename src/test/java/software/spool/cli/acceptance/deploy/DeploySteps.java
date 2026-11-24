@@ -1,5 +1,7 @@
 package software.spool.cli.acceptance.deploy;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cucumber.java.After;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -7,12 +9,15 @@ import software.spool.cli.acceptance.CliUnderTest;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class DeploySteps {
     private static final String API_PLACEHOLDER = "{api}";
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final CliUnderTest cli;
     private Optional<FakeSpoolApi> api = Optional.empty();
@@ -57,13 +62,30 @@ public class DeploySteps {
 
     @Then("the API received the descriptor {string} as {string}, signed with the secret")
     public void theApiReceivedTheDescriptor(String file, String name) throws IOException {
-        String descriptor = Files.readString(cli.folder().resolve(file));
-        assertThat(api.orElseThrow().received()).singleElement().satisfies(request -> {
-            assertThat(request.method()).isEqualTo("PUT");
-            assertThat(request.path()).isEqualTo("/spool/deployments/" + name);
-            assertThat(request.body()).isEqualTo(descriptor);
-            assertThat(request.signed()).isTrue();
-        });
+        JsonNode pipeline = deployed(name);
+        assertThat(pipeline.get("main").asText()).isEqualTo(file);
+        assertThat(pipeline.get("files").get(file).asText()).isEqualTo(Files.readString(cli.folder().resolve(file)));
+        assertThat(api.orElseThrow().received()).singleElement().satisfies(request -> assertThat(request.signed()).isTrue());
+    }
+
+    @Then("the API received {string} with the main file {string} and the files {string} and {string}")
+    public void theApiReceivedTheFiles(String name, String main, String first, String second) throws IOException {
+        JsonNode pipeline = deployed(name);
+        assertThat(pipeline.get("main").asText()).isEqualTo(main);
+        List<String> files = new ArrayList<>();
+        pipeline.get("files").fieldNames().forEachRemaining(files::add);
+        assertThat(files).containsExactlyInAnyOrder(main, first, second);
+        for (String file : files) {
+            assertThat(pipeline.get("files").get(file).asText()).isEqualTo(Files.readString(cli.folder().resolve(file)));
+        }
+    }
+
+    private JsonNode deployed(String name) throws IOException {
+        FakeSpoolApi.Received request = api.orElseThrow().received().stream()
+                .filter(received -> received.method().equals("PUT"))
+                .filter(received -> received.path().equals("/spool/deployments/" + name))
+                .findFirst().orElseThrow(() -> new AssertionError("the API received no deployment of " + name));
+        return JSON.readTree(request.body());
     }
 
     @Then("the API received nothing")
