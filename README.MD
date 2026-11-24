@@ -70,7 +70,7 @@ The commands of the cluster talk to the API in `--api`, or in `SPOOL_API`. They 
 environment, never with an argument: the token in `SPOOL_API_TOKEN` goes as a bearer token, for an `OIDC` provider of
 the API; otherwise the secret in `SPOOL_API_SECRET` signs each request with the headers `X-Spool-Signature` and
 `X-Spool-Timestamp`, for an `HMAC_SIGNATURE` one. Without either, nothing is sent. An error of the API ends with exit
-code 1 and its message. A descriptor with `include:` is refused by the API: it takes a single file.
+code 1 and its message. `spool deploy` sends the descriptor with every file it includes, and the ones those include, by their paths relative to it.
 
 ## The classes of the project
 
