@@ -62,6 +62,9 @@ Without the secret the release still publishes everything, and the web serves th
 | `spool deploy DESCRIPTOR [--name NAME] [--api URL]` | Deploys the descriptor, as it is in its file, in the cluster of the [Spool API](https://github.com/Spool-FRAMEWORK/api), under the name of the file without `.spool.yaml` or the one given. Says the node it went to, or that it waits for one. |
 | `spool deployments [--api URL]` | Lists the deployments with their version, node and state, and the error of one that failed. |
 | `spool withdraw NAME [--api URL]` | Withdraws a deployment, so its node stops it. |
+| `spool deploy DESCRIPTOR --system SYSTEM` | Deploys the descriptor as a pipeline of the system, created if it does not exist; the files it includes become files the system shares. |
+| `spool systems [--api URL]` | Lists the systems, each with its pipelines, their version, node and state. |
+| `spool withdraw [NAME] --system SYSTEM` | Withdraws a pipeline of the system, or the whole system without NAME. |
 
 The commands that read a descriptor take `--profile` (by default the one in `SPOOL_PROFILE`) and `--classpath`. Exit
 code 2 is a command used wrongly, such as an unknown `--target`.
