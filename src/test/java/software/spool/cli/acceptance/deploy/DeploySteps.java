@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,6 +37,21 @@ public class DeploySteps {
         FakeSpoolApi started = new FakeSpoolApi(secret, node);
         api = Optional.of(started);
         cli.placeholder(API_PLACEHOLDER, started.address().toString());
+    }
+
+    @Given("a Spool API that accepts the secret {string} and has the live node {string} with the labels {string}")
+    public void aSpoolApiWithALabelledNode(String secret, String node, String labels) throws IOException {
+        aSpoolApi(secret, node);
+        api.orElseThrow().labelTheLiveNode(Set.of(labels.split(",")));
+    }
+
+    @Then("the API received the descriptor {string} as {string}, asking for the labels {string}")
+    public void theApiReceivedTheDescriptorAskingFor(String file, String name, String labels) throws IOException {
+        JsonNode pipeline = deployed(name);
+        assertThat(pipeline.get("main").asText()).isEqualTo(file);
+        List<String> asked = new ArrayList<>();
+        pipeline.path("labels").forEach(label -> asked.add(label.asText()));
+        assertThat(asked).containsExactly(labels.split(","));
     }
 
     @Given("the environment variable {string} is the address of the API")

@@ -27,6 +27,6 @@ Feature: spool deploy asks for the labels of the nodes a deployment can run on
   @DEV-143
   Scenario: A label not written as key=value is refused before calling the API
     When I run "spool deploy orders.spool.yaml --label aws --api {api}"
-    Then the exit code is not 0
-    And the error output says "key=value"
+    Then the exit code is 1
+    And the error says "key=value"
     And the API received nothing

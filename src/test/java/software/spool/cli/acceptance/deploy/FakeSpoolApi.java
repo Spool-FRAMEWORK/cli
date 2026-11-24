@@ -44,6 +44,7 @@ final class FakeSpoolApi {
     private final Map<String, Map<String, Map<String, Object>>> pipelines = new LinkedHashMap<>();
     private final List<Received> received = new CopyOnWriteArrayList<>();
     private Optional<String> liveNode;
+    private Set<String> labelsOfTheLiveNode = Set.of();
 
     FakeSpoolApi(String secret, String liveNode) throws IOException {
         this.liveNode = Optional.of(liveNode);
@@ -64,6 +65,10 @@ final class FakeSpoolApi {
 
     void noLiveNode() {
         liveNode = Optional.empty();
+    }
+
+    void labelTheLiveNode(Set<String> labels) {
+        labelsOfTheLiveNode = Set.copyOf(labels);
     }
 
     void has(String name, Optional<String> node, String state) {
@@ -98,7 +103,11 @@ final class FakeSpoolApi {
         Optional<String> problem = problemOf(JSON.readTree(body));
         if (problem.isPresent()) return error(400, problem.get());
         boolean isNew = !deployments.containsKey(name);
-        deployments.put(name, deployment(name, liveNode, liveNode.isPresent() ? "STARTING" : "WAITING"));
+        List<String> asked = labelsOf(JSON.readTree(body));
+        Optional<String> node = liveNode.filter(live -> labelsOfTheLiveNode.containsAll(asked));
+        Map<String, Object> deployment = deployment(name, node, node.isPresent() ? "STARTING" : "WAITING");
+        deployment.put("labels", asked);
+        deployments.put(name, deployment);
         return new Answer(isNew ? 201 : 200, JSON.writeValueAsString(deployments.get(name)));
     }
 
@@ -172,6 +181,12 @@ final class FakeSpoolApi {
         }
     }
 
+    private static List<String> labelsOf(JsonNode deployment) {
+        List<String> labels = new ArrayList<>();
+        deployment.path("labels").forEach(label -> labels.add(label.asText()));
+        return labels;
+    }
+
     private static Map<String, Object> deployment(String name, Optional<String> node, String state) {
         Map<String, Object> deployment = new HashMap<>();
         deployment.put("name", name);
@@ -181,6 +196,7 @@ final class FakeSpoolApi {
         deployment.put("state", state);
         deployment.put("node", node.orElse(null));
         deployment.put("error", null);
+        deployment.put("labels", List.of());
         return deployment;
     }
 

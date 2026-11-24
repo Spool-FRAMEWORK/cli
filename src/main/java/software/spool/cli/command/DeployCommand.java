@@ -8,7 +8,11 @@ import software.spool.cli.CommandContext;
 import software.spool.cli.api.DeploymentView;
 import software.spool.cli.api.PipelineFolder;
 
+import software.spool.core.model.spool.NodeLabels;
+
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 
@@ -30,6 +34,10 @@ public final class DeployCommand implements Callable<Integer> {
             + "the descriptor includes become files the system shares.")
     private Optional<String> system = Optional.empty();
 
+    @Option(names = "--label", paramLabel = "KEY=VALUE", description = "A label the node must have to run it, such as "
+            + "cloud=aws. Repeat it for each label; without it, any live node can run it.")
+    private List<String> labels = new ArrayList<>();
+
     @Mixin
     private ApiOptions api;
 
@@ -39,16 +47,26 @@ public final class DeployCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        NodeLabels asked = NodeLabels.of(labels);
+        if (system.isPresent() && !asked.isEmpty())
+            throw new IllegalArgumentException("--label does not work with --system yet: the pipelines of a system ask "
+                    + "for no labels");
         PipelineFolder.PipelineFiles pipeline = PipelineFolder.of(context.resolve(descriptor));
         String deployment = name.orElseGet(this::nameOfTheFile);
         DeploymentView deployed = system.isPresent()
                 ? api.client(context).systems().deploy(system.get(), deployment, pipeline)
-                : api.client(context).deploy(deployment, pipeline);
-        String shown = deployed.name() + system.map(owning -> " of " + owning).orElse("");
-        context.terminal().say(deployed.waits()
-                ? shown + " is deployed and waits for a live node"
-                : shown + " is deployed on " + deployed.node().orElse("?") + ", in its version " + deployed.version());
+                : api.client(context).deploy(deployment, pipeline, asked);
+        context.terminal().say(outcomeOf(deployed));
         return 0;
+    }
+
+    private String outcomeOf(DeploymentView deployed) {
+        String shown = deployed.name() + system.map(owning -> " of " + owning).orElse("");
+        if (!deployed.waits())
+            return shown + " is deployed on " + deployed.node().orElse("?") + ", in its version " + deployed.version();
+        return deployed.labels().isEmpty()
+                ? shown + " is deployed and waits for a live node"
+                : shown + " is waiting for a node with the labels " + String.join(",", deployed.labels());
     }
 
     private String nameOfTheFile() {
