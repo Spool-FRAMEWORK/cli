@@ -26,6 +26,10 @@ public final class DeployCommand implements Callable<Integer> {
             + ".spool.yaml.")
     private Optional<String> name = Optional.empty();
 
+    @Option(names = "--system", description = "The system to deploy it into, created if it does not exist. The files "
+            + "the descriptor includes become files the system shares.")
+    private Optional<String> system = Optional.empty();
+
     @Mixin
     private ApiOptions api;
 
@@ -36,10 +40,14 @@ public final class DeployCommand implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         PipelineFolder.PipelineFiles pipeline = PipelineFolder.of(context.resolve(descriptor));
-        DeploymentView deployed = api.client(context).deploy(name.orElseGet(this::nameOfTheFile), pipeline);
+        String deployment = name.orElseGet(this::nameOfTheFile);
+        DeploymentView deployed = system.isPresent()
+                ? api.client(context).systems().deploy(system.get(), deployment, pipeline)
+                : api.client(context).deploy(deployment, pipeline);
+        String shown = deployed.name() + system.map(owning -> " of " + owning).orElse("");
         context.terminal().say(deployed.waits()
-                ? deployed.name() + " is deployed and waits for a live node"
-                : deployed.name() + " is deployed on " + deployed.node().orElse("?") + ", in its version " + deployed.version());
+                ? shown + " is deployed and waits for a live node"
+                : shown + " is deployed on " + deployed.node().orElse("?") + ", in its version " + deployed.version());
         return 0;
     }
 

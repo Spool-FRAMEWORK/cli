@@ -88,6 +88,27 @@ public class DeploySteps {
         return JSON.readTree(request.body());
     }
 
+    @Given("I ran {string}")
+    public void iRan(String commandLine) {
+        cli.run(commandLine, "");
+        assertThat(cli.exitCode()).as(cli.error()).isZero();
+    }
+
+    @Then("the API has the system {string} with the shared file {string}")
+    public void theApiHasTheSystem(String system, String shared) throws IOException {
+        assertThat(api.orElseThrow().sharedFilesOf(system))
+                .containsEntry(shared, Files.readString(cli.folder().resolve(shared)));
+    }
+
+    @Then("the API has the pipeline {string} of {string} with the main file {string}")
+    public void theApiHasThePipeline(String pipeline, String system, String main) {
+        assertThat(api.orElseThrow().pipelineOf(system, pipeline)).isPresent();
+        FakeSpoolApi.Received put = api.orElseThrow().received().stream()
+                .filter(received -> received.path().equals("/spool/systems/" + system + "/pipelines/" + pipeline))
+                .findFirst().orElseThrow();
+        assertThat(put.body()).contains("\"main\":\"" + main + "\"");
+    }
+
     @Then("the API received nothing")
     public void theApiReceivedNothing() {
         assertThat(api.orElseThrow().received()).isEmpty();
